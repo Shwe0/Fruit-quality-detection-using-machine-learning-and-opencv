@@ -1,0 +1,86 @@
+IN[]: from kivy.app import App
+     import numpy as np
+       import os
+    import cv2
+   from PIL import Image
+   from glob import glob
+  from kivy.uix.camera import Camera
+  from kivy.uix.boxlayout import BoxLayout
+  from kivy.uix.button import Button
+   from matplotlib import pyplot as plt
+    class CameraExample(App):
+       def build(self):
+        layout = BoxLayout(orientation='vertical')
+
+       # Create a camera object
+        self.cameraObject            = Camera(play=False)
+        self.cameraObject.play       = True
+        self.cameraObject.resolution = (300, 300) # Specify the resolution
+               # Create a button for taking photograph
+        self.camaraClick = Button(text="Take Photo")
+        self.camaraClick.size_hint=(.5, .2)
+        self.camaraClick.pos_hint={'x': .25, 'y':.75}
+        # bind the button's on_press to onCameraClick
+        self.camaraClick.bind(on_press=self.onCameraClick)
+        # add camera and button to the layout
+        layout.add_widget(self.cameraObject)
+        layout.add_widget(self.camaraClick)
+           # return the root widget
+           return layout
+
+    # Take the current frame of the video as the photo graph       
+     def onCameraClick(self, *args):
+        self.cameraObject.export_to_png('C:/Users/Kumar/Desktop/mydir5/a7.png')
+        for name in glob('desktop/mydir5/*.jpg'):
+            image_file = name
+            img_org = Image.open(image_file)
+            factor = 1
+            width = int(800 * factor)
+            height = int(495 * factor)
+            img_anti = img_org.resize((width, height), Image.ANTIALIAS)
+            name, ext = os.path.splitext(image_file)
+            new_image_file = "%s%s%s" % (name, str(factor), ext)
+            img_anti.save(new_image_file)
+            print("resized file saved as %s" % new_image_file)
+            import webbrowser
+            webbrowser.open(new_image_file)
+        for name in glob('desktop/mydir5/*.jpg'):
+            im = Image.open(name)
+            name = str(name).rstrip(".jpg")
+            im.save(name + '.png', 'PNG')
+        img_mask = 'desktop/mydir5/*.png'
+        img_names = glob(img_mask)
+        for name in glob('desktop/mydir5/*.png'):
+            im = Image.open(name)
+            name = str(name).rstrip(".png")
+            im.save(name + '.tif', 'TIFF')
+        img_mask = 'desktop/mydir5/*.tif'
+        img_names = glob(img_mask)
+        for fn in img_names:
+            print('processing %s...' % fn,)
+            imageNo1 = cv2.imread(fn, 0)
+            cv2.ocl.setUseOpenCL(False)
+            imageNo2 = cv2.imread('a7.tif',0) 
+            imageNo1 = imageNo1[200:600, 200:1000] 
+            orb = cv2.ORB_create()
+            keypoint1, descriptor1 = orb.detectAndCompute(imageNo1,None)
+            keypoint2, descriptor2 = orb.detectAndCompute(imageNo2,None)
+            bfMatcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            matchResults = bfMatcher.match(descriptor1,descriptor2)
+            matchResults = sorted(matchResults, key = lambda x:x.distance)
+            resultImage = cv2.drawMatches(imageNo1,keypoint1,imageNo2,keypoint2,matchResults[:100], None, flags=2)
+            plt.imshow(resultImage),plt.show()
+            if (matchResults[171:200]):
+                print ("90% unadulterated")
+            elif (matchResults[152:170]):
+                print ("80% unadulterated")
+            elif (matchResults[131:151]):
+                print ("70% unadulterated")
+            elif (matchResults[120:130]):
+                print ("60% unadulterated")
+            elif (matchResults[0:119]):
+                print ("Adulterated")
+
+# Start the Camera App
+if __name__ == '__main__':
+     CameraExample().run()
